@@ -19,14 +19,12 @@ INSTANCE_DIR="${PAPERCLIP_HOME}/instances/default"
 CONFIG_FILE="${INSTANCE_DIR}/config.json"
 
 # --- Onboard falls noch nicht geschehen ---
-# Config loeschen falls deploymentMode ungueltig (nicht local_trusted oder authenticated)
-if [ -f "${CONFIG_FILE}" ]; then
-    CURRENT_MODE=$(cat "${CONFIG_FILE}" | tr -d ' \n' | grep -o '"deploymentMode":"[^"]*"' | head -1)
-    echo "Current deploymentMode: ${CURRENT_MODE}"
-    if echo "${CURRENT_MODE}" | grep -qv 'local_trusted\|authenticated'; then
-        echo "Removing broken config (invalid deploymentMode)..."
-        rm -f "${CONFIG_FILE}"
-    fi
+# EINMALIG: Config loeschen wegen v1.0.8 Bug (deploymentMode=private)
+FIXFLAG="/data/paperclip/.config_fixed_v110"
+if [ ! -f "${FIXFLAG}" ]; then
+    echo "One-time config reset for v1.1.x..."
+    rm -f "${CONFIG_FILE}"
+    touch "${FIXFLAG}"
 fi
 
 if [ ! -f "${CONFIG_FILE}" ]; then
@@ -38,24 +36,17 @@ fi
 if [ -f "${CONFIG_FILE}" ]; then
     echo "Patching config for HA environment..."
 
-    echo "Config structure before patch:"
-    cat "${CONFIG_FILE}" | head -5
-    echo "..."
+    # jq-basiertes Patching fuer flache Config-Struktur
+    TMP=$(mktemp)
+    jq '
+      .server.host = "0.0.0.0" |
+      .server.port = 3100 |
+      .server.deploymentMode = "authenticated" |
+      .database.embeddedPostgres.createPostgresUser = true
+    ' "${CONFIG_FILE}" > "$TMP" && mv "$TMP" "${CONFIG_FILE}"
 
-    # Sed-basiertes Patching (zuverlaessiger als jq bei unbekannter Struktur)
-    # 1. Host auf 0.0.0.0
-    sed -i 's/"host"[[:space:]]*:[[:space:]]*"127\.0\.0\.1"/"host":"0.0.0.0"/g' "${CONFIG_FILE}"
-    # 2. deploymentMode auf authenticated (local_trusted erzwingt 127.0.0.1)
-    sed -i 's/"deploymentMode"[[:space:]]*:[[:space:]]*"local_trusted"/"deploymentMode":"authenticated"/g' "${CONFIG_FILE}"
-    # 3. createPostgresUser hinzufuegen
-    if ! grep -q "createPostgresUser" "${CONFIG_FILE}"; then
-        sed -i 's/"embeddedPostgres"[[:space:]]*:[[:space:]]*{/"embeddedPostgres":{"createPostgresUser":true,/g' "${CONFIG_FILE}"
-    fi
-
-    echo "Config after patch (first 200 chars):"
-    head -c 200 "${CONFIG_FILE}"
-    echo ""
-    echo "createPostgresUser present: $(grep -c createPostgresUser "${CONFIG_FILE}")"
+    echo "Config patched: host=0.0.0.0, mode=authenticated, createPostgresUser=true"
+    echo "Verify deploymentMode: $(jq -r '.server.deploymentMode' "${CONFIG_FILE}" 2>/dev/null)"
 fi
 
 # --- Env-Variablen laden ---
