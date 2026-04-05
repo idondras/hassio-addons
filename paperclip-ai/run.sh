@@ -19,10 +19,14 @@ INSTANCE_DIR="${PAPERCLIP_HOME}/instances/default"
 CONFIG_FILE="${INSTANCE_DIR}/config.json"
 
 # --- Onboard falls noch nicht geschehen ---
-# Config loeschen falls deploymentMode=private (fehlerhaft aus v1.0.8)
-if [ -f "${CONFIG_FILE}" ] && grep -q '"deploymentMode":"private"' "${CONFIG_FILE}"; then
-    echo "Removing broken config (invalid deploymentMode)..."
-    rm -f "${CONFIG_FILE}"
+# Config loeschen falls deploymentMode ungueltig (nicht local_trusted oder authenticated)
+if [ -f "${CONFIG_FILE}" ]; then
+    CURRENT_MODE=$(cat "${CONFIG_FILE}" | tr -d ' \n' | grep -o '"deploymentMode":"[^"]*"' | head -1)
+    echo "Current deploymentMode: ${CURRENT_MODE}"
+    if echo "${CURRENT_MODE}" | grep -qv 'local_trusted\|authenticated'; then
+        echo "Removing broken config (invalid deploymentMode)..."
+        rm -f "${CONFIG_FILE}"
+    fi
 fi
 
 if [ ! -f "${CONFIG_FILE}" ]; then
