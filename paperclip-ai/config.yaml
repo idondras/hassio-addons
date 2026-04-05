@@ -1,0 +1,32 @@
+name: Paperclip AI
+version: "1.0.0"
+slug: paperclip-ai
+description: Open-source orchestration for zero-human companies
+url: https://github.com/paperclipai/paperclip
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+
+ingress: true
+ingress_port: 3100
+panel_icon: mdi:robot-industrial
+panel_title: Paperclip AI
+
+ports:
+  "3100/tcp": null
+ports_description:
+  "3100/tcp": Paperclip AI Web UI
+
+map:
+  - data:rw
+
+options:
+  telemetry: false
+  log_level: info
+
+schema:
+  telemetry: bool
+  log_level: list(trace|debug|info|warn|error|fatal)
