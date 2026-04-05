@@ -36,56 +36,17 @@ if [ ! -f "${MASTER_KEY}" ]; then
 fi
 
 # --- Config generieren ---
-cat > "${INSTANCE_DIR}/config.json" << EOF
-{
-  "database": {
-    "provider": "embedded-postgres",
-    "embeddedPostgres": {
-      "dataDir": "${INSTANCE_DIR}/db",
-      "port": 54329,
-      "autoBackup": {
-        "enabled": true,
-        "intervalMinutes": 60,
-        "retentionDays": 30,
-        "backupDir": "${INSTANCE_DIR}/data/backups"
-      }
-    }
-  },
-  "logging": {
-    "provider": "file",
-    "file": {
-      "directory": "${INSTANCE_DIR}/logs"
-    }
-  },
-  "server": {
-    "host": "0.0.0.0",
-    "port": 3100,
-    "deploymentMode": "local_trusted",
-    "deploymentExposure": "private",
-    "serveUi": true,
-    "auth": {
-      "baseUrlMode": "auto",
-      "enableSignUp": true
-    }
-  },
-  "storage": {
-    "provider": "local_disk",
-    "localDisk": {
-      "baseDir": "${INSTANCE_DIR}/data/storage"
-    }
-  },
-  "secrets": {
-    "provider": "local_encrypted",
-    "localEncrypted": {
-      "keyFile": "${MASTER_KEY}",
-      "strict": false
-    }
-  },
-  "telemetry": {
-    "enabled": ${TELEMETRY}
-  }
-}
-EOF
+# Erstmalig: paperclipai onboard laufen lassen um config zu generieren
+if [ ! -f "${INSTANCE_DIR}/config.json" ]; then
+    echo "Running initial onboard..."
+    paperclipai onboard --yes
+fi
+
+# Config anpassen: Host auf 0.0.0.0 setzen fuer Ingress
+if [ -f "${INSTANCE_DIR}/config.json" ]; then
+    TMP=$(mktemp)
+    jq '.server.host = "0.0.0.0" | .server.port = 3100' "${INSTANCE_DIR}/config.json" > "$TMP" && mv "$TMP" "${INSTANCE_DIR}/config.json"
+fi
 
 echo "========================================="
 echo " Paperclip AI Add-on"
