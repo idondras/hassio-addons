@@ -28,35 +28,24 @@ fi
 if [ -f "${CONFIG_FILE}" ]; then
     echo "Patching config for HA environment..."
 
-    # Erst pruefen was drin ist
-    echo "Current config keys:"
-    jq 'keys' "${CONFIG_FILE}" 2>/dev/null || true
+    echo "Config structure before patch:"
+    cat "${CONFIG_FILE}" | head -5
+    echo "..."
 
-    # Patch anwenden
-    TMP=$(mktemp)
-    if jq '
-      .server.host = "0.0.0.0" |
-      .server.port = 3100 |
-      .database.embeddedPostgres.createPostgresUser = true
-    ' "${CONFIG_FILE}" > "$TMP" 2>/dev/null; then
-        mv "$TMP" "${CONFIG_FILE}"
-        echo "Config patched successfully."
-    else
-        echo "WARNING: jq patch failed, trying sed fallback..."
-        rm -f "$TMP"
-        # Fallback: sed fuer createPostgresUser
-        if ! grep -q "createPostgresUser" "${CONFIG_FILE}"; then
-            sed -i 's/"embeddedPostgres":{/"embeddedPostgres":{"createPostgresUser":true,/' "${CONFIG_FILE}"
-        fi
-        # Host patchen
-        sed -i 's/"host":"127.0.0.1"/"host":"0.0.0.0"/' "${CONFIG_FILE}"
+    # Sed-basiertes Patching (zuverlaessiger als jq bei unbekannter Struktur)
+    # 1. Host auf 0.0.0.0
+    sed -i 's/"host"[[:space:]]*:[[:space:]]*"127\.0\.0\.1"/"host":"0.0.0.0"/g' "${CONFIG_FILE}"
+    # 2. deploymentMode auf private statt local_trusted
+    sed -i 's/"deploymentMode"[[:space:]]*:[[:space:]]*"local_trusted"/"deploymentMode":"private"/g' "${CONFIG_FILE}"
+    # 3. createPostgresUser hinzufuegen
+    if ! grep -q "createPostgresUser" "${CONFIG_FILE}"; then
+        sed -i 's/"embeddedPostgres"[[:space:]]*:[[:space:]]*{/"embeddedPostgres":{"createPostgresUser":true,/g' "${CONFIG_FILE}"
     fi
 
-    # Verifizieren
-    echo "createPostgresUser value:"
-    jq '.database.embeddedPostgres.createPostgresUser' "${CONFIG_FILE}" 2>/dev/null || echo "MISSING"
-    echo "server.host value:"
-    jq '.server.host' "${CONFIG_FILE}" 2>/dev/null || echo "MISSING"
+    echo "Config after patch (first 200 chars):"
+    head -c 200 "${CONFIG_FILE}"
+    echo ""
+    echo "createPostgresUser present: $(grep -c createPostgresUser "${CONFIG_FILE}")"
 fi
 
 # --- Env-Variablen laden ---
