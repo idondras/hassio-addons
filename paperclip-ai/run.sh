@@ -19,6 +19,12 @@ INSTANCE_DIR="${PAPERCLIP_HOME}/instances/default"
 CONFIG_FILE="${INSTANCE_DIR}/config.json"
 
 # --- Onboard falls noch nicht geschehen ---
+# Config loeschen falls deploymentMode=private (fehlerhaft aus v1.0.8)
+if [ -f "${CONFIG_FILE}" ] && grep -q '"deploymentMode":"private"' "${CONFIG_FILE}"; then
+    echo "Removing broken config (invalid deploymentMode)..."
+    rm -f "${CONFIG_FILE}"
+fi
+
 if [ ! -f "${CONFIG_FILE}" ]; then
     echo "Running initial onboard..."
     paperclipai onboard --yes
@@ -35,8 +41,8 @@ if [ -f "${CONFIG_FILE}" ]; then
     # Sed-basiertes Patching (zuverlaessiger als jq bei unbekannter Struktur)
     # 1. Host auf 0.0.0.0
     sed -i 's/"host"[[:space:]]*:[[:space:]]*"127\.0\.0\.1"/"host":"0.0.0.0"/g' "${CONFIG_FILE}"
-    # 2. deploymentMode auf private statt local_trusted
-    sed -i 's/"deploymentMode"[[:space:]]*:[[:space:]]*"local_trusted"/"deploymentMode":"private"/g' "${CONFIG_FILE}"
+    # 2. deploymentMode auf authenticated (local_trusted erzwingt 127.0.0.1)
+    sed -i 's/"deploymentMode"[[:space:]]*:[[:space:]]*"local_trusted"/"deploymentMode":"authenticated"/g' "${CONFIG_FILE}"
     # 3. createPostgresUser hinzufuegen
     if ! grep -q "createPostgresUser" "${CONFIG_FILE}"; then
         sed -i 's/"embeddedPostgres"[[:space:]]*:[[:space:]]*{/"embeddedPostgres":{"createPostgresUser":true,/g' "${CONFIG_FILE}"
