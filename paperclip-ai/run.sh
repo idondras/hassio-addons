@@ -36,7 +36,14 @@ if [ ! -f "${MASTER_KEY}" ]; then
 fi
 
 # --- Config generieren ---
-# Erstmalig: paperclipai onboard laufen lassen um config zu generieren
+# Config loeschen falls ungueltig, dann onboard laufen lassen
+if [ -f "${INSTANCE_DIR}/config.json" ]; then
+    if ! jq -e '."$meta"' "${INSTANCE_DIR}/config.json" > /dev/null 2>&1; then
+        echo "Removing invalid config, will re-onboard..."
+        rm -f "${INSTANCE_DIR}/config.json"
+    fi
+fi
+
 if [ ! -f "${INSTANCE_DIR}/config.json" ]; then
     echo "Running initial onboard..."
     paperclipai onboard --yes
