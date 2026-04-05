@@ -5,55 +5,38 @@ set -e
 # Paperclip AI — Home Assistant Add-on Startskript
 # ═══════════════════════════════════════════════════════
 
-PAPERCLIP_HOME="/data/paperclip"
-INSTANCE_DIR="${PAPERCLIP_HOME}/instances/default"
-
-# --- Verzeichnisse anlegen ---
-mkdir -p "${INSTANCE_DIR}/db"
-mkdir -p "${INSTANCE_DIR}/data/storage"
-mkdir -p "${INSTANCE_DIR}/data/backups"
-mkdir -p "${INSTANCE_DIR}/logs"
-mkdir -p "${INSTANCE_DIR}/secrets"
+# Paperclip Home = persistent HA data volume
+export PAPERCLIP_HOME="/data/paperclip"
+export HOME="/root"
 
 # --- Optionen aus HA-Config lesen ---
 TELEMETRY=$(jq -r '.telemetry // false' /data/options.json)
 LOG_LEVEL=$(jq -r '.log_level // "info"' /data/options.json)
 
-# --- JWT-Secret generieren (einmalig) ---
-ENV_FILE="${INSTANCE_DIR}/.env"
-if [ ! -f "${ENV_FILE}" ]; then
-    echo "Generating JWT secret..."
-    JWT_SECRET=$(openssl rand -hex 32)
-    echo "PAPERCLIP_AGENT_JWT_SECRET=${JWT_SECRET}" > "${ENV_FILE}"
-fi
+# --- Onboard falls noch nicht geschehen ---
+INSTANCE_DIR="${PAPERCLIP_HOME}/instances/default"
+CONFIG_FILE="${INSTANCE_DIR}/config.json"
 
-# --- Master-Key generieren (einmalig) ---
-MASTER_KEY="${INSTANCE_DIR}/secrets/master.key"
-if [ ! -f "${MASTER_KEY}" ]; then
-    echo "Generating master encryption key..."
-    openssl rand -base64 32 > "${MASTER_KEY}"
-    chmod 600 "${MASTER_KEY}"
-fi
+# Symlink ~/.paperclip -> /data/paperclip damit onboard dort schreibt
+ln -sfn "${PAPERCLIP_HOME}" "${HOME}/.paperclip"
 
-# --- Config generieren ---
-# Config loeschen falls ungueltig, dann onboard laufen lassen
-if [ -f "${INSTANCE_DIR}/config.json" ]; then
-    if ! jq -e '."$meta"' "${INSTANCE_DIR}/config.json" > /dev/null 2>&1; then
-        echo "Removing invalid config, will re-onboard..."
-        rm -f "${INSTANCE_DIR}/config.json"
-    fi
-fi
-
-if [ ! -f "${INSTANCE_DIR}/config.json" ]; then
+if [ ! -f "${CONFIG_FILE}" ]; then
     echo "Running initial onboard..."
     paperclipai onboard --yes
 fi
 
-# Config anpassen: Host auf 0.0.0.0 und Postgres-User erstellen
-if [ -f "${INSTANCE_DIR}/config.json" ]; then
+# Config anpassen: Host auf 0.0.0.0 und Postgres-User erstellen (root Container)
+if [ -f "${CONFIG_FILE}" ]; then
     TMP=$(mktemp)
-    jq '.server.host = "0.0.0.0" | .server.port = 3100 | .database.embeddedPostgres.createPostgresUser = true' "${INSTANCE_DIR}/config.json" > "$TMP" && mv "$TMP" "${INSTANCE_DIR}/config.json"
+    jq '.server.host = "0.0.0.0" | .server.port = 3100 | .database.embeddedPostgres.createPostgresUser = true' "${CONFIG_FILE}" > "$TMP" && mv "$TMP" "${CONFIG_FILE}"
 fi
+
+# --- Env-Variablen laden ---
+ENV_FILE="${INSTANCE_DIR}/.env"
+if [ -f "${ENV_FILE}" ]; then
+    export $(grep -v '^#' "${ENV_FILE}" | xargs)
+fi
+export LOG_LEVEL="${LOG_LEVEL}"
 
 echo "========================================="
 echo " Paperclip AI Add-on"
@@ -61,12 +44,6 @@ echo " Log Level: ${LOG_LEVEL}"
 echo " Data Dir:  ${INSTANCE_DIR}"
 echo " Port:      3100"
 echo "========================================="
-
-# --- Env-Variablen laden ---
-export $(grep -v '^#' "${ENV_FILE}" | xargs)
-export PAPERCLIP_HOME="${PAPERCLIP_HOME}"
-export PAPERCLIP_INSTANCE="default"
-export LOG_LEVEL="${LOG_LEVEL}"
 
 # --- Paperclip starten ---
 cd "${PAPERCLIP_HOME}"
