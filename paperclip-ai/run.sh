@@ -101,4 +101,5 @@ export PAPERCLIP_INSTANCE="default"
 export LOG_LEVEL="${LOG_LEVEL}"
 
 # --- Paperclip starten ---
-exec paperclipai run --home "${PAPERCLIP_HOME}" --instance default
+cd "${PAPERCLIP_HOME}"
+exec paperclipai run
