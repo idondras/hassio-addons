@@ -20,7 +20,7 @@ CONFIG_FILE="${INSTANCE_DIR}/config.json"
 
 # --- Onboard falls noch nicht geschehen ---
 # EINMALIG: Config loeschen wegen v1.0.8 Bug (deploymentMode=private)
-FIXFLAG="/data/paperclip/.config_fixed_v110"
+FIXFLAG="/data/paperclip/.config_fixed_v111"
 if [ ! -f "${FIXFLAG}" ]; then
     echo "One-time config reset for v1.1.x..."
     rm -f "${CONFIG_FILE}"
