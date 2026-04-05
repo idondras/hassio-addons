@@ -49,10 +49,10 @@ if [ ! -f "${INSTANCE_DIR}/config.json" ]; then
     paperclipai onboard --yes
 fi
 
-# Config anpassen: Host auf 0.0.0.0 setzen fuer Ingress
+# Config anpassen: Host auf 0.0.0.0 und Postgres-User erstellen
 if [ -f "${INSTANCE_DIR}/config.json" ]; then
     TMP=$(mktemp)
-    jq '.server.host = "0.0.0.0" | .server.port = 3100' "${INSTANCE_DIR}/config.json" > "$TMP" && mv "$TMP" "${INSTANCE_DIR}/config.json"
+    jq '.server.host = "0.0.0.0" | .server.port = 3100 | .database.embeddedPostgres.createPostgresUser = true' "${INSTANCE_DIR}/config.json" > "$TMP" && mv "$TMP" "${INSTANCE_DIR}/config.json"
 fi
 
 echo "========================================="
