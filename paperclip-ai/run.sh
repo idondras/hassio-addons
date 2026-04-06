@@ -34,7 +34,7 @@ fi
 # --- Onboard als paperclip User ---
 if [ ! -f "${CONFIG_FILE}" ]; then
     echo "Running paperclipai onboard..."
-    su-exec paperclip paperclipai onboard --yes
+    su-exec paperclip env NODE_OPTIONS="--experimental-require-module" paperclipai onboard --yes
 fi
 
 # --- Config patchen fuer HA (host 0.0.0.0, authenticated mode) ---
@@ -63,7 +63,7 @@ if [ -f "${ENV_FILE}" ]; then
 fi
 
 echo "========================================="
-echo " Paperclip AI Add-on v1.3.0"
+echo " Paperclip AI Add-on v1.3.1"
 echo " Log Level: ${LOG_LEVEL}"
 echo " Data Dir:  ${INSTANCE_DIR}"
 echo " User:      paperclip (non-root)"
@@ -72,4 +72,4 @@ echo "========================================="
 
 # --- Paperclip als non-root User starten ---
 cd "${PAPERCLIP_HOME}"
-exec su-exec paperclip env ${EXPORT_VARS} LOG_LEVEL="${LOG_LEVEL}" HOME="${PAPERCLIP_USER_HOME}" paperclipai run
+exec su-exec paperclip env ${EXPORT_VARS} LOG_LEVEL="${LOG_LEVEL}" HOME="${PAPERCLIP_USER_HOME}" NODE_OPTIONS="--experimental-require-module" paperclipai run

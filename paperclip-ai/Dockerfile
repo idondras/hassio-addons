@@ -1,7 +1,7 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-# Basis-Abhängigkeiten + Node.js 20 nativ aus Alpine 3.19 Repos
+# Basis-Abhängigkeiten + Node.js 20.15 nativ aus Alpine 3.20 Repos
 RUN apk add --no-cache \
     bash \
     curl \
@@ -13,7 +13,7 @@ RUN apk add --no-cache \
     nodejs \
     npm
 
-# Node-Version pruefen (sollte 20.x sein auf Alpine 3.19)
+# Node-Version pruefen (sollte 20.15.x sein auf Alpine 3.20)
 RUN node --version && npm --version
 
 # Paperclip AI global installieren
