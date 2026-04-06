@@ -59,6 +59,14 @@ if [ -f "${CONFIG_FILE}" ]; then
     echo "  -> host: $(jq -r '.server.host' "${CONFIG_FILE}" 2>/dev/null)"
 fi
 
+# --- Allowed hostnames fuer HA Ingress (local, DuckDNS, Nabu Casa) ---
+echo "Adding allowed hostnames for HA access..."
+for HOST in homeassistant.local blazgrow.duckdns.org; do
+    su-exec paperclip env NODE_OPTIONS="--experimental-require-module" paperclipai allowed-hostname "$HOST" 2>/dev/null || true
+done
+# Nabu Casa hostnames sind dynamisch — alle *.ui.nabu.casa erlauben
+su-exec paperclip env NODE_OPTIONS="--experimental-require-module" paperclipai allowed-hostname "*.ui.nabu.casa" 2>/dev/null || true
+
 # --- Env laden ---
 ENV_FILE="${INSTANCE_DIR}/.env"
 EXPORT_VARS=""
@@ -67,7 +75,7 @@ if [ -f "${ENV_FILE}" ]; then
 fi
 
 echo "========================================="
-echo " Paperclip AI Add-on v1.5.1"
+echo " Paperclip AI Add-on v1.5.2"
 echo " Log Level: ${LOG_LEVEL}"
 echo " Data Dir:  ${INSTANCE_DIR}"
 echo " User:      paperclip (non-root)"
