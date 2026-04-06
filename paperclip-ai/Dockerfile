@@ -1,7 +1,7 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-# Basis-Abhängigkeiten + Node.js 20.15 nativ aus Alpine 3.20 Repos
+# Basis-Abhängigkeiten + Node.js aus Alpine 3.21 Repos (Node 22.x)
 RUN apk add --no-cache \
     bash \
     curl \
@@ -13,10 +13,12 @@ RUN apk add --no-cache \
     nodejs \
     npm
 
-# Node-Version pruefen (sollte 20.15.x sein auf Alpine 3.20)
+# Node-Version pruefen
 RUN node --version && npm --version
 
 # Paperclip AI global installieren
+# NODE_OPTIONS noetig weil einige Dependencies ESM-only sind aber von CJS require()'d werden
+ENV NODE_OPTIONS="--experimental-require-module"
 RUN npm install -g paperclipai@2026.403.0
 
 # Non-root User fuer Postgres
