@@ -11,10 +11,10 @@ RUN apk add --no-cache \
     su-exec \
     libstdc++
 
-# Node.js 20 via offiziellem Binary (Alpine-Paket hat v24, zu neu fuer Paperclip)
+# Node.js 20 via unofficial musl builds (Alpine = musl, offizielle Binaries sind glibc)
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then NODE_ARCH="arm64"; else NODE_ARCH="x64"; fi && \
-    curl -fsSL "https://nodejs.org/dist/v20.19.0/node-v20.19.0-linux-${NODE_ARCH}.tar.xz" | \
+    curl -fsSL "https://unofficial-builds.nodejs.org/download/release/v20.19.0/node-v20.19.0-linux-${NODE_ARCH}-musl.tar.xz" | \
     tar -xJ -C /usr/local --strip-components=1 && \
     node --version && npm --version
 
