@@ -9,12 +9,13 @@ RUN apk add --no-cache \
     icu-data-full \
     jq \
     su-exec \
-    libstdc++
+    libstdc++ \
+    gcompat
 
-# Node.js 20 via unofficial musl builds (Alpine = musl, offizielle Binaries sind glibc)
+# Node.js 20 via offiziellem Binary + gcompat (glibc-Compat fuer Alpine/musl)
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then NODE_ARCH="arm64"; else NODE_ARCH="x64"; fi && \
-    curl -fsSL "https://unofficial-builds.nodejs.org/download/release/v20.19.0/node-v20.19.0-linux-${NODE_ARCH}-musl.tar.xz" | \
+    curl -fsSL "https://nodejs.org/dist/v20.19.0/node-v20.19.0-linux-${NODE_ARCH}.tar.xz" | \
     tar -xJ -C /usr/local --strip-components=1 && \
     node --version && npm --version
 

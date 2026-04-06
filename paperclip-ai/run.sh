@@ -63,7 +63,7 @@ if [ -f "${ENV_FILE}" ]; then
 fi
 
 echo "========================================="
-echo " Paperclip AI Add-on v1.2.2"
+echo " Paperclip AI Add-on v1.2.3"
 echo " Log Level: ${LOG_LEVEL}"
 echo " Data Dir:  ${INSTANCE_DIR}"
 echo " User:      paperclip (non-root)"
