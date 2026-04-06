@@ -16,6 +16,10 @@ LOG_LEVEL=$(jq -r '.log_level // "info"' /data/options.json)
 mkdir -p "${PAPERCLIP_HOME}"
 chown -R paperclip:paperclip "${PAPERCLIP_HOME}"
 
+# PostgreSQL braucht /run/postgresql fuer Lock-Files
+mkdir -p /run/postgresql
+chown paperclip:paperclip /run/postgresql
+
 # Symlink ~/.paperclip -> /data/paperclip fuer den paperclip User
 PAPERCLIP_USER_HOME=$(getent passwd paperclip | cut -d: -f6)
 mkdir -p "${PAPERCLIP_USER_HOME}"
@@ -63,7 +67,7 @@ if [ -f "${ENV_FILE}" ]; then
 fi
 
 echo "========================================="
-echo " Paperclip AI Add-on v1.5.0"
+echo " Paperclip AI Add-on v1.5.1"
 echo " Log Level: ${LOG_LEVEL}"
 echo " Data Dir:  ${INSTANCE_DIR}"
 echo " User:      paperclip (non-root)"
