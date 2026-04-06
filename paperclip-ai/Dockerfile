@@ -1,7 +1,7 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-# Basis-Abhängigkeiten
+# Basis-Abhängigkeiten + Node.js 20 nativ aus Alpine 3.19 Repos
 RUN apk add --no-cache \
     bash \
     curl \
@@ -10,14 +10,11 @@ RUN apk add --no-cache \
     jq \
     su-exec \
     libstdc++ \
-    gcompat
+    nodejs \
+    npm
 
-# Node.js 20 via offiziellem Binary + gcompat (glibc-Compat fuer Alpine/musl)
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ]; then NODE_ARCH="arm64"; else NODE_ARCH="x64"; fi && \
-    curl -fsSL "https://nodejs.org/dist/v20.19.0/node-v20.19.0-linux-${NODE_ARCH}.tar.xz" | \
-    tar -xJ -C /usr/local --strip-components=1 && \
-    node --version && npm --version
+# Node-Version pruefen (sollte 20.x sein auf Alpine 3.19)
+RUN node --version && npm --version
 
 # Paperclip AI global installieren
 RUN npm install -g paperclipai@2026.403.0
