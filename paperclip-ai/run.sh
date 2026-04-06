@@ -41,13 +41,13 @@ if [ ! -f "${CONFIG_FILE}" ]; then
     su-exec paperclip env NODE_OPTIONS="--experimental-require-module" paperclipai onboard --yes
 fi
 
-# --- Config patchen fuer HA (host 0.0.0.0, authenticated mode) ---
+# --- Config patchen fuer HA (host 0.0.0.0, Port 3101 intern, nginx davor auf 3100) ---
 if [ -f "${CONFIG_FILE}" ]; then
     echo "Patching config for HA environment..."
     TMP=$(mktemp)
     if jq '
       .server.host = "0.0.0.0" |
-      .server.port = 3100 |
+      .server.port = 3101 |
       .server.deploymentMode = "authenticated"
     ' "${CONFIG_FILE}" > "$TMP" 2>/dev/null; then
         mv "$TMP" "${CONFIG_FILE}"
@@ -57,6 +57,7 @@ if [ -f "${CONFIG_FILE}" ]; then
     fi
     echo "  -> deploymentMode: $(jq -r '.server.deploymentMode' "${CONFIG_FILE}" 2>/dev/null)"
     echo "  -> host: $(jq -r '.server.host' "${CONFIG_FILE}" 2>/dev/null)"
+    echo "  -> port: $(jq -r '.server.port' "${CONFIG_FILE}" 2>/dev/null)"
 fi
 
 # --- Allowed hostnames fuer HA Ingress (local, DuckDNS, Nabu Casa) ---
@@ -75,12 +76,24 @@ if [ -f "${ENV_FILE}" ]; then
 fi
 
 echo "========================================="
-echo " Paperclip AI Add-on v1.5.2"
+echo " Paperclip AI Add-on v1.6.0"
 echo " Log Level: ${LOG_LEVEL}"
 echo " Data Dir:  ${INSTANCE_DIR}"
 echo " User:      paperclip (non-root)"
-echo " Port:      3100"
+echo " Paperclip: 127.0.0.1:3101 (intern)"
+echo " nginx:     0.0.0.0:3100  (Ingress)"
 echo "========================================="
+
+# --- nginx Reverse Proxy starten (Ingress Path-Rewriting) ---
+echo "Starting nginx reverse proxy for Ingress path rewriting..."
+nginx &
+NGINX_PID=$!
+sleep 1
+if kill -0 $NGINX_PID 2>/dev/null; then
+    echo "  -> nginx running (PID ${NGINX_PID})"
+else
+    echo "  -> WARNING: nginx failed to start, continuing without proxy"
+fi
 
 # --- Paperclip als non-root User starten ---
 cd "${PAPERCLIP_HOME}"

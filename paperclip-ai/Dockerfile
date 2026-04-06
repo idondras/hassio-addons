@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     libstdc++ \
     nodejs \
     npm \
+    nginx \
     postgresql16 \
     postgresql16-client
 
@@ -46,6 +47,9 @@ RUN PG_EMBED_DIR=$(find /usr/local/lib/node_modules/paperclipai/node_modules -pa
 
 # Non-root User fuer Postgres
 RUN addgroup -S paperclip && adduser -S paperclip -G paperclip
+
+# nginx Config fuer Ingress Path-Rewriting
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Startskript
 COPY run.sh /
