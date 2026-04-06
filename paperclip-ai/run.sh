@@ -4,65 +4,76 @@
 # Paperclip AI — Home Assistant Add-on Startskript
 # ═══════════════════════════════════════════════════════
 
-# Paperclip Home = persistent HA data volume
 export PAPERCLIP_HOME="/data/paperclip"
 export HOME="/root"
 
-# --- Optionen aus HA-Config lesen ---
 TELEMETRY=$(jq -r '.telemetry // false' /data/options.json)
 LOG_LEVEL=$(jq -r '.log_level // "info"' /data/options.json)
 
-# Symlink ~/.paperclip -> /data/paperclip damit onboard dort schreibt
+# Symlink damit onboard nach /data/paperclip schreibt
 ln -sfn "${PAPERCLIP_HOME}" "${HOME}/.paperclip"
 
 INSTANCE_DIR="${PAPERCLIP_HOME}/instances/default"
 CONFIG_FILE="${INSTANCE_DIR}/config.json"
 
-# --- Onboard falls noch nicht geschehen ---
-# EINMALIG: Config loeschen wegen v1.0.8 Bug (deploymentMode=private)
-FIXFLAG="/data/paperclip/.config_fixed_v111"
-if [ ! -f "${FIXFLAG}" ]; then
-    echo "One-time config reset for v1.1.x..."
-    rm -f "${CONFIG_FILE}"
-    touch "${FIXFLAG}"
+# ── Config-Validierung: bei ungueltigem deploymentMode neu erstellen ──
+if [ -f "${CONFIG_FILE}" ]; then
+    # Prüfe ob deploymentMode gültig ist (local_trusted oder authenticated)
+    MODE=$(jq -r '.server.deploymentMode // "unknown"' "${CONFIG_FILE}" 2>/dev/null)
+    echo "Current deploymentMode: ${MODE}"
+    if [ "${MODE}" != "local_trusted" ] && [ "${MODE}" != "authenticated" ]; then
+        echo "Invalid deploymentMode '${MODE}', removing config for fresh onboard..."
+        rm -f "${CONFIG_FILE}"
+    fi
 fi
 
+# ── Onboard falls keine Config vorhanden ──
 if [ ! -f "${CONFIG_FILE}" ]; then
-    echo "Running initial onboard..."
+    echo "Running paperclipai onboard..."
     paperclipai onboard --yes
 fi
 
-# --- Config patchen: Host 0.0.0.0 + createPostgresUser ---
+# ── Config patchen für HA-Umgebung ──
 if [ -f "${CONFIG_FILE}" ]; then
-    echo "Patching config for HA environment..."
-
-    # jq-basiertes Patching fuer flache Config-Struktur
+    echo "Patching config for HA (host=0.0.0.0, authenticated, createPostgresUser)..."
     TMP=$(mktemp)
-    jq '
+    if jq '
       .server.host = "0.0.0.0" |
       .server.port = 3100 |
       .server.deploymentMode = "authenticated" |
       .database.embeddedPostgres.createPostgresUser = true
-    ' "${CONFIG_FILE}" > "$TMP" && mv "$TMP" "${CONFIG_FILE}"
-
-    echo "Config patched: host=0.0.0.0, mode=authenticated, createPostgresUser=true"
-    echo "Verify deploymentMode: $(jq -r '.server.deploymentMode' "${CONFIG_FILE}" 2>/dev/null)"
+    ' "${CONFIG_FILE}" > "$TMP" 2>/dev/null; then
+        mv "$TMP" "${CONFIG_FILE}"
+        echo "  -> jq patch OK"
+    else
+        rm -f "$TMP"
+        echo "  -> jq patch failed, using sed..."
+        sed -i 's/"host":"127\.0\.0\.1"/"host":"0.0.0.0"/g' "${CONFIG_FILE}"
+        sed -i 's/"deploymentMode":"local_trusted"/"deploymentMode":"authenticated"/g' "${CONFIG_FILE}"
+        if ! grep -q "createPostgresUser" "${CONFIG_FILE}"; then
+            sed -i '/"embeddedPostgres"/s/{/{"createPostgresUser":true,/' "${CONFIG_FILE}"
+        fi
+    fi
+    echo "  -> deploymentMode: $(jq -r '.server.deploymentMode' "${CONFIG_FILE}" 2>/dev/null)"
+    echo "  -> host: $(jq -r '.server.host' "${CONFIG_FILE}" 2>/dev/null)"
+    echo "  -> createPostgresUser: $(jq -r '.database.embeddedPostgres.createPostgresUser' "${CONFIG_FILE}" 2>/dev/null)"
 fi
 
-# --- Env-Variablen laden ---
+# ── Env laden ──
 ENV_FILE="${INSTANCE_DIR}/.env"
 if [ -f "${ENV_FILE}" ]; then
-    export $(grep -v '^#' "${ENV_FILE}" | xargs)
+    set -a
+    . "${ENV_FILE}"
+    set +a
 fi
 export LOG_LEVEL="${LOG_LEVEL}"
 
 echo "========================================="
-echo " Paperclip AI Add-on"
+echo " Paperclip AI Add-on v1.1.3"
 echo " Log Level: ${LOG_LEVEL}"
 echo " Data Dir:  ${INSTANCE_DIR}"
 echo " Port:      3100"
 echo "========================================="
 
-# --- Paperclip starten ---
 cd "${PAPERCLIP_HOME}"
 exec paperclipai run
